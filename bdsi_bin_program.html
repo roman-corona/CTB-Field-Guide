@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>BDSI Bin Program</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100,600;100,800;125,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column of stacked panels; each panel = one finding, summary line first, chart second */
+:root {
+  --bg: #f4f5f6;
+  --panel: #ffffff;
+  --ink: #1e1e25;
+  --ink-2: #4a5157;
+  --ink-3: #6d757b;
+  --rule: #dde0e3;
+  --accent: #ff4400;          /* seller-scanned Phoenix sites, attention */
+  --accent-soft: #ffe3d6;
+  --muted-bar: #a9b1b6;
+  --teal: #2c6a6e;
+  --teal-soft: #d6e6e7;
+  --ref: #1e1e25;
+  --display: "Archivo", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --body: "IBM Plex Sans", "Segoe UI", Helvetica, Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15161a; --panel: #1e1f24; --ink: #eef0f2; --ink-2: #c3c8cc; --ink-3: #9aa2a8;
+    --rule: #33363d; --accent: #ff6a33; --accent-soft: #4a2416; --muted-bar: #5b646a;
+    --teal: #5aa4a9; --teal-soft: #1f3a3c; --ref: #eef0f2; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15161a; --panel: #1e1f24; --ink: #eef0f2; --ink-2: #c3c8cc; --ink-3: #9aa2a8;
+  --rule: #33363d; --accent: #ff6a33; --accent-soft: #4a2416; --muted-bar: #5b646a;
+  --teal: #5aa4a9; --teal-soft: #1f3a3c; --ref: #eef0f2; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 15px/1.55 var(--body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 40px 56px;
+}
+.wrap { max-width: 980px; margin: 0 auto; display: grid; gap: 20px; }
+h1, h2 { font-family: var(--display); text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(30px, 5.2vw, 50px); font-weight: 800; font-stretch: 125%; line-height: 1.02; letter-spacing: -0.01em; }
+h2 { font-size: 21px; font-weight: 800; line-height: 1.2; }
+p { margin: 0; }
+.eyebrow { font: 500 12px/1.3 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+.lede { color: var(--ink-2); max-width: 64ch; font-size: 16px; }
+header { display: grid; gap: 14px; padding-bottom: 8px; }
+
+.kpis { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; }
+.kpi { background: var(--panel); padding: 16px 16px 14px; display: grid; gap: 4px; align-content: start; }
+.kpi b { font: 800 30px/1 var(--display); font-stretch: 100%; font-variant-numeric: tabular-nums; }
+.kpi.hot b { color: var(--accent); }
+.kpi span { font-size: 13px; color: var(--ink-2); line-height: 1.35; }
+
+.panel { background: var(--panel); border: 1px solid var(--rule); border-radius: 10px; padding: 24px; display: grid; gap: 16px; min-width: 0; }
+.panel-head { display: grid; gap: 6px; }
+.panel-head p { color: var(--ink-2); max-width: 70ch; }
+.tag { display: inline-flex; align-items: center; gap: 6px; font: 500 11px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; padding: 5px 8px; border-radius: 4px; width: max-content; }
+.tag.hyp { background: var(--accent-soft); color: var(--ink); }
+.tag.hyp::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+
+.key { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: var(--ink-2); }
+.key i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.sw-accent { background: var(--accent); }
+.sw-verify { background: repeating-linear-gradient(135deg, var(--accent) 0 3px, var(--accent-soft) 3px 6px); }
+.sw-muted { background: var(--muted-bar); }
+.sw-ref { background: none; border-left: 2px dashed var(--ref); border-radius: 0 !important; width: 2px !important; height: 14px !important; }
+
+/* horizontal bar charts */
+.hbars { display: grid; gap: 4px; }
+.hrow { display: grid; grid-template-columns: 168px minmax(0,1fr) 64px; align-items: center; gap: 12px; min-height: 26px; border-radius: 4px; outline: none; }
+.hrow:hover .bar, .hrow:focus-visible .bar { filter: brightness(1.08); }
+.hrow:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
+.hrow .lbl { font-size: 13.5px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hrow .track { position: relative; height: 18px; }
+.hrow .bar { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 0 4px 4px 0; background: var(--muted-bar); min-width: 2px; }
+.hrow.scan .bar { background: var(--accent); }
+.hrow.verify .bar { background: repeating-linear-gradient(135deg, var(--accent) 0 4px, var(--accent-soft) 4px 8px); }
+.hrow .val { font: 500 13px/1 var(--mono); font-variant-numeric: tabular-nums; text-align: right; color: var(--ink-2); }
+.axis { display: grid; grid-template-columns: 168px minmax(0,1fr) 64px; gap: 12px; }
+.axis .ticks { position: relative; height: 18px; border-top: 1px solid var(--rule); }
+.axis .ticks span { position: absolute; top: 4px; transform: translateX(-50%); font: 11px/1 var(--mono); color: var(--ink-3); }
+.axis .ticks span:first-child { transform: none; }
+.gridlines { position: absolute; inset: 0; pointer-events: none; }
+.gridlines i { position: absolute; top: -2px; bottom: -2px; width: 1px; background: var(--rule); }
+.refline { position: absolute; top: -4px; bottom: -4px; width: 0; border-left: 2px dashed var(--ref); z-index: 2; }
+
+/* column chart */
+.cols { display: grid; grid-template-columns: repeat(18, minmax(0,1fr)); gap: 3px; align-items: end; height: 200px; padding-top: 22px; position: relative; border-bottom: 1px solid var(--rule); }
+.col { position: relative; height: 100%; display: flex; align-items: flex-end; outline: none; }
+.col .c { width: 100%; background: var(--teal); border-radius: 4px 4px 0 0; min-height: 2px; }
+.col.late .c { background: var(--teal-soft); box-shadow: inset 0 0 0 1px var(--teal); }
+.col:hover .c, .col:focus-visible .c { filter: brightness(1.1); }
+.col:focus-visible { box-shadow: 0 0 0 2px var(--accent); border-radius: 4px; }
+.col .cv { position: absolute; bottom: calc(var(--h) + 4px); left: 50%; transform: translateX(-50%); font: 500 11px/1 var(--mono); color: var(--ink-2); white-space: nowrap; }
+.yrs { display: grid; grid-template-columns: repeat(18, minmax(0,1fr)); gap: 3px; margin-top: 6px; }
+.yrs span { font: 11px/1 var(--mono); color: var(--ink-3); text-align: center; }
+.split { display: grid; grid-template-columns: minmax(0,1fr) 220px; gap: 24px; align-items: end; }
+.callout { border-left: 3px solid var(--teal); padding: 4px 0 4px 14px; display: grid; gap: 4px; }
+.callout b { font: 800 34px/1 var(--display); color: var(--teal); }
+.callout span { font-size: 13.5px; color: var(--ink-2); }
+
+/* fill-rate band */
+.implied { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; }
+.imp { border: 1px solid var(--rule); border-radius: 8px; padding: 12px 14px; display: grid; gap: 2px; }
+.imp b { font: 800 26px/1.1 var(--display); font-variant-numeric: tabular-nums; }
+.imp.req b { color: var(--ink); }
+.imp.gap b { color: var(--accent); }
+.imp span { font-size: 12.5px; color: var(--ink-2); line-height: 1.35; }
+.question { background: var(--bg); border-radius: 8px; padding: 12px 14px; font-size: 14px; color: var(--ink-2); }
+.question strong { color: var(--ink); }
+
+/* standards strip */
+.standards { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 1px; background: var(--rule); border-radius: 8px; overflow: hidden; border: 1px solid var(--rule); }
+.std { background: var(--panel); padding: 14px; display: grid; gap: 6px; align-content: start; }
+.std b { font: 800 24px/1 var(--display); color: var(--ink); }
+.std span { font-size: 13px; color: var(--ink-2); line-height: 1.35; }
+.std code { font: 11px/1.2 var(--mono); color: var(--ink-3); }
+
+.groups { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; }
+.ours { font-size: 14px; color: var(--ink-2); border-top: 1px solid var(--rule); padding-top: 12px; }
+.ours strong { color: var(--ink); }
+.grp { border: 1px solid var(--rule); border-radius: 8px; padding: 14px 16px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.grp.first { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.grp-h { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.grp-h h3 { margin: 0; font: 700 15px/1.3 var(--body); }
+.grp-h .n { font: 500 12px/1 var(--mono); color: var(--ink-3); white-space: nowrap; }
+.grp ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 13.5px; color: var(--ink-2); }
+.grp .why { font-size: 13px; color: var(--ink); background: var(--accent-soft); border-radius: 6px; padding: 8px 10px; }
+
+.gaps { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px 24px; margin: 0; padding: 0; list-style: none; }
+.gaps li { display: grid; grid-template-columns: 22px minmax(0,1fr); gap: 8px; font-size: 14px; color: var(--ink-2); }
+.gaps li::before { content: "○"; color: var(--accent); font-weight: 700; }
+.gaps strong { color: var(--ink); font-weight: 600; }
+
+details { font-size: 13.5px; color: var(--ink-2); }
+summary { cursor: pointer; color: var(--ink); font-weight: 500; width: max-content; }
+summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+.tbl-wrap { overflow-x: auto; margin-top: 10px; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { text-align: right; padding: 6px 10px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+th { font: 500 11px/1.2 var(--mono); text-transform: uppercase; letter-spacing: .05em; color: var(--ink-3); }
+
+footer { font-size: 12.5px; color: var(--ink-3); display: grid; gap: 6px; padding-top: 4px; max-width: 80ch; }
+
+#tip { position: fixed; z-index: 10; pointer-events: none; background: var(--ink); color: var(--panel); font: 12.5px/1.4 var(--body); padding: 8px 10px; border-radius: 6px; max-width: 260px; box-shadow: 0 4px 14px rgba(0,0,0,.18); }
+#tip b { font-weight: 600; }
+
+@media (max-width: 960px) and (min-width: 761px) { .groups { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+@media (max-width: 760px) {
+  .kpis { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .kpi:last-child { grid-column: span 2; }
+  .standards { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .std:last-child { grid-column: span 2; }
+  .split { grid-template-columns: minmax(0,1fr); }
+  .implied { grid-template-columns: minmax(0,1fr); }
+  .groups, .gaps { grid-template-columns: minmax(0,1fr); }
+  .hrow .pre { display: none; }
+  .hrow, .axis { grid-template-columns: 116px minmax(0,1fr) 54px; gap: 8px; }
+  .hrow .lbl { font-size: 12.5px; }
+  .col .cv { display: none; }
+  .yrs span:nth-child(even) { visibility: hidden; }
+  .panel { padding: 18px 16px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .bar, .c { transition: filter .15s ease; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">BDSI bin program &middot; Service Hub bin map, pulled 10/14/2026</div>
+  <h1>What BDSI manages for Honeywell</h1>
+  <p class="lede">A first read of the consolidated bin map: how big the program is, where it sits, how old it is, and what the supply agreement says BDSI owes on every bin.</p>
+</header>
+
+<section class="kpis" aria-label="Program at a glance">
+  <div class="kpi"><b>61,518</b><span>bins under BDSI management</span></div>
+  <div class="kpi"><b>16</b><span>Honeywell sites</span></div>
+  <div class="kpi"><b>17,761</b><span>unique part numbers</span></div>
+  <div class="kpi hot"><b>53.8%</b><span>of bins at the 3 seller-scanned Phoenix sites</span></div>
+  <div class="kpi"><b>77%</b><span>of bins set up before 2015</span></div>
+</section>
+
+<section class="panel" aria-labelledby="h-sites">
+  <div class="panel-head">
+    <h2 id="h-sites">Over half the program sits at three sites where BDSI does the scanning</h2>
+    <p>Sky Harbor R&amp;O, Engines and Tempe hold 33,099 bins. Appendix A names them as seller-scanned, so daily inspection and replenishment there is BDSI's job.</p>
+  </div>
+  <div class="key"><span><i class="sw-accent"></i>Seller-scanned (App. A)</span><span><i class="sw-verify"></i>Engines Kitting: confirm coverage</span><span><i class="sw-muted"></i>Other sites</span></div>
+  <div class="hbars" id="sites" role="list"></div>
+  <div class="axis" aria-hidden="true"><span></span><div class="ticks" id="sites-axis"></div><span></span></div>
+  <details>
+    <summary>Show as table</summary>
+    <div class="tbl-wrap"><table id="sites-table"><thead><tr><th>Site</th><th>Bins</th><th>Share</th><th>Unique parts</th><th>Set up before 2015</th></tr></thead><tbody></tbody></table></div>
+  </details>
+</section>
+
+<section class="panel" aria-labelledby="h-age">
+  <div class="panel-head">
+    <h2 id="h-age">Most bins were sized more than a decade ago</h2>
+    <p>Bin setup dates cluster in 2009 and 2010. If those bins were never resized, slow movers can sit for years without a scan, drop out of BDSI's forecast and fall off pricing. The bin map shows setup dates only, so the resize history is the next thing to request.</p>
+  </div>
+  <div class="split">
+    <div>
+      <div class="cols" id="years" role="list" aria-label="Bins by setup year"></div>
+      <div class="yrs" id="years-axis" aria-hidden="true"></div>
+    </div>
+    <div class="callout">
+      <b>51.7%</b>
+      <span>of all bins were set up in 2009 or 2010 (31,823 bins)</span>
+    </div>
+  </div>
+</section>
+
+<section class="panel" aria-labelledby="h-open">
+  <div class="panel-head">
+    <span class="tag hyp">Hypothesis, needs one confirmation</span>
+    <h2 id="h-open">Thousands of bins may be stocked out right now</h2>
+    <p>In a two-bin system one open order is normal: one side is being refilled. Two or more open orders on a bin can mean both sides were scanned empty before a refill arrived, which is how BDSI itself defines a stockout. A 98% fill rate allows at most 2% of bins to be stocked out.</p>
+  </div>
+  <div class="key"><span><i class="sw-accent"></i>Above the 2% allowance</span><span><i class="sw-muted"></i>At or below 2%</span><span><i class="sw-ref"></i>2% allowance (98% fill rate)</span><span>Sites under 300 bins not shown</span></div>
+  <div class="hbars" id="open" role="list"></div>
+  <div class="axis" aria-hidden="true"><span></span><div class="ticks" id="open-axis"></div><span></span></div>
+  <div class="implied">
+    <div class="imp req"><b>98.0%</b><span>fill rate required each quarter (sec. 13(b))</span></div>
+    <div class="imp gap"><b>92.9%</b><span>implied at the seller-scanned Phoenix sites (2,342 of 33,099 bins with 2+ open orders)</span></div>
+    <div class="imp gap"><b>94.1%</b><span>implied across all sites (3,631 of 61,518 bins)</span></div>
+  </div>
+  <p class="question"><strong>Before this number goes anywhere:</strong> confirm what Service Hub's "Count of Open Orders" counts. This is also a single-day snapshot; the contract measures weekly and averages over the quarter.</p>
+</section>
+
+<section class="panel" aria-labelledby="h-owe">
+  <div class="panel-head">
+    <h2 id="h-owe">What BDSI owes on every bin</h2>
+    <p>The core operating standards, as cited in our contract review. These are the yardsticks each data pull gets measured against.</p>
+  </div>
+  <div class="standards">
+    <div class="std"><b>Daily</b><span>Inspect and scan every bin at seller-scanned sites</span><code>SOW 4.2</code></div>
+    <div class="std"><b>5 days</b><span>Average routine refill after a scan</span><code>SOW 4.2</code></div>
+    <div class="std"><b>24 hrs</b><span>Refill a stockout or line-stop situation</span><code>SOW 1.7, 4.2</code></div>
+    <div class="std"><b>2 + 1 mo</b><span>Two months in the bin, one month of forward stock</span><code>Sec. 13(a)</code></div>
+    <div class="std"><b>98%</b><span>Fill rate each quarter, measured weekly</span><code>Sec. 13(b)</code></div>
+  </div>
+  <div class="groups">
+    <div class="grp first">
+      <div class="grp-h"><h3>Reporting</h3><span class="n">4 obligations</span></div>
+      <ul><li>Monthly fill-rate and stockout reports</li><li>Monthly bin map</li><li>Quarterly 12-month scan-hit review</li><li>Demand analysis and inventory calculations</li></ul>
+      <p class="why">Start here. We either received these or we didn't, so a missing report is provable today with no analysis.</p>
+    </div>
+    <div class="grp">
+      <div class="grp-h"><h3>Bin operations</h3><span class="n">9 obligations</span></div>
+      <ul><li>Daily inspection, replenishment and restock</li><li>Recommend bin sizes and min/max levels (SOW 4.1, 4.4)</li><li>Daily review of rejected-scan exceptions (App. B)</li></ul>
+    </div>
+    <div class="grp">
+      <div class="grp-h"><h3>Performance</h3><span class="n">4 obligations</span></div>
+      <ul><li>98% fill rate</li><li>On-time delivery and quality (PPM) standards</li><li>Supply 100% of requirements (sec. 4(b))</li></ul>
+    </div>
+    <div class="grp">
+      <div class="grp-h"><h3>Coverage and pricing</h3><span class="n">4 obligations</span></div>
+      <ul><li>Annual price list for every Product (sec. 5(a))</li><li>No changes unless written and signed (sec. 22)</li><li>Gap-buy responsibility (sec. 13(c))</li></ul>
+    </div>
+    <div class="grp">
+      <div class="grp-h"><h3>Notice</h3><span class="n">2 obligations</span></div>
+      <ul><li>Notify as soon as a lead-time problem appears (sec. 12)</li><li>Advance notice of changes (SOW 6)</li></ul>
+    </div>
+    <div class="grp">
+      <div class="grp-h"><h3>Honeywell's remedies</h3><span class="n">7 provisions</span></div>
+      <ul><li>Line-stoppage reimbursement (sec. 4(c))</li><li>Excess lead-time and gap-buy costs (sec. 12)</li><li>Renewal test and termination right (sec. 2(b), 3(a))</li></ul>
+    </div>
+  </div>
+  <p class="ours"><strong>Our side of the contract:</strong> Honeywell owes BDSI an annual baseline forecast by July 31 (sec. 4(a)). Kevin has copies for the last 3+ years, which answers BDSI's most likely defense.</p>
+</section>
+
+<section class="panel" aria-labelledby="h-need">
+  <div class="panel-head">
+    <h2 id="h-need">What the bin map can't tell us yet</h2>
+    <p>The bin map sets the scope and the fill-rate denominator. Testing the obligations above takes four more pulls.</p>
+  </div>
+  <ul class="gaps">
+    <li><span><strong>Scan Activity Report.</strong> Active vs. inactive bins and every failed scan with its reason.</span></li>
+    <li><span><strong>Annual price lists.</strong> The Contract column is blank on all 61,518 rows.</span></li>
+    <li><span><strong>Order dates.</strong> Scan, order and receipt dates to measure the 5-day and 24-hour standards.</span></li>
+    <li><span><strong>Bin size history.</strong> Min and Max are blank on every row; the resize log shows whether bins were ever reviewed.</span></li>
+  </ul>
+</section>
+
+<footer>
+  <p>Source: Consolidated_Bin_Map.xlsx (Service Hub export, 10/14/2026). Torrance and Urbana accounts are combined. Clause references come from the earlier contract review and have not yet been checked against the executed agreement and amendments.</p>
+  <p>Draft for internal discussion.</p>
+</footer>
+
+</div>
+<div id="tip" hidden></div>
+
+<script>
+const SITES = [
+  ["HONA Sky Harbor R&O",15794,6465,11848,2618,1316,"scan"],
+  ["HONA Engines",9449,3676,8043,872,364,"scan"],
+  ["HONA Torrance",8796,5107,8007,423,179,""],
+  ["HONA Tempe",7856,3871,5597,1374,662,"scan"],
+  ["HONA Urbana",3972,876,3105,126,28,""],
+  ["HONA Mexicali",3549,2425,2456,197,96,""],
+  ["HONA Hill AFB",3509,2163,1003,489,257,""],
+  ["HONA Rocky Mount",3016,2434,2920,219,139,""],
+  ["HONA Raunheim",2483,1511,2035,396,243,""],
+  ["HONA Engines Kitting",1290,844,1030,439,295,"verify"],
+  ["HONA Anniston",615,560,422,10,3,""],
+  ["HONA HCMO",497,489,336,58,30,""],
+  ["HONA Singapore",373,373,364,35,12,""],
+  ["HONA Deer Valley",127,127,0,2,1,""],
+  ["HONA South Bend",120,120,120,10,4,""],
+  ["HONA Malaysia",72,72,0,2,2,""]
+];
+const YEARS = {2009:23552,2010:8271,2011:3637,2012:2324,2013:4205,2014:5297,2015:2026,2016:994,2017:1133,2018:681,2019:1599,2020:655,2021:2490,2022:727,2023:1010,2024:999,2025:1227,2026:690};
+const TOTAL = 61518;
+const fmt = n => n.toLocaleString("en-US");
+const pct = (n, d=1) => (n*100).toFixed(d) + "%";
+
+const tip = document.getElementById("tip");
+function showTip(e, html) {
+  tip.innerHTML = html; tip.hidden = false;
+  const r = (e.currentTarget || e.target).getBoundingClientRect();
+  const x = e.clientX ?? (r.left + r.width/2), y = e.clientY ?? r.top;
+  const tw = tip.offsetWidth, th = tip.offsetHeight;
+  let left = Math.min(x + 14, window.innerWidth - tw - 12);
+  let top = y - th - 12; if (top < 8) top = y + 18;
+  tip.style.left = Math.max(8, left) + "px"; tip.style.top = top + "px";
+}
+function hideTip() { tip.hidden = true; }
+function wire(el, html) {
+  el.tabIndex = 0;
+  el.addEventListener("mousemove", e => showTip(e, html));
+  el.addEventListener("mouseleave", hideTip);
+  el.addEventListener("focus", e => { const r = el.getBoundingClientRect(); showTip({currentTarget: el, clientX: r.left + r.width*0.6, clientY: r.top}, html); });
+  el.addEventListener("blur", hideTip);
+}
+function axis(id, max, ticks, f) {
+  const a = document.getElementById(id);
+  a.innerHTML = ticks.map(t => `<span style="left:${t/max*100}%">${f(t)}</span>`).join("");
+}
+function grid(track, max, ticks) {
+  const g = document.createElement("div"); g.className = "gridlines";
+  g.innerHTML = ticks.slice(1).map(t => `<i style="left:${t/max*100}%"></i>`).join("");
+  track.prepend(g);
+}
+
+// Chart 1: bins by site
+(function () {
+  const max = 16000, ticks = [0,4000,8000,12000,16000];
+  const host = document.getElementById("sites");
+  SITES.forEach(([name,bins,parts,pre,o1,o2,kind]) => {
+    const row = document.createElement("div");
+    row.className = "hrow " + kind; row.setAttribute("role","listitem");
+    row.setAttribute("aria-label", `${name}: ${fmt(bins)} bins, ${pct(bins/TOTAL)} of program`);
+    row.innerHTML = `<span class="lbl">${name.replace(/^HONA /, '<span class="pre">HONA </span>')}</span><div class="track"><div class="bar" style="width:${bins/max*100}%"></div></div><span class="val">${fmt(bins)}</span>`;
+    grid(row.querySelector(".track"), max, ticks);
+    const cov = kind === "scan" ? "Seller-scanned (App. A)" : kind === "verify" ? "Coverage to confirm" : "Not listed as seller-scanned";
+    wire(row, `<b>${name}</b><br>${fmt(bins)} bins &middot; ${pct(bins/TOTAL)} of program<br>${fmt(parts)} unique parts<br>${cov}`);
+    host.appendChild(row);
+  });
+  axis("sites-axis", max, ticks, t => t ? (t/1000) + "k" : "0");
+  const tb = document.querySelector("#sites-table tbody");
+  tb.innerHTML = SITES.map(([n,b,p,pre]) => `<tr><td>${n}</td><td>${fmt(b)}</td><td>${pct(b/TOTAL)}</td><td>${fmt(p)}</td><td>${pct(pre/b,0)}</td></tr>`).join("") +
+    `<tr><td><b>Total</b></td><td><b>61,518</b></td><td><b>100%</b></td><td><b>17,761</b></td><td><b>77%</b></td></tr>`;
+})();
+
+// Chart 2: setup year
+(function () {
+  const host = document.getElementById("years"), ax = document.getElementById("years-axis");
+  const max = 24000;
+  Object.entries(YEARS).forEach(([y,n]) => {
+    const h = n/max*100;
+    const col = document.createElement("div");
+    col.className = "col" + (y >= 2015 ? " late" : ""); col.setAttribute("role","listitem");
+    col.setAttribute("aria-label", `${y}: ${fmt(n)} bins`);
+    col.style.setProperty("--h", h + "%");
+    col.innerHTML = `<div class="c" style="height:${h}%"></div>` + ((y == 2009 || y == 2010 || y == 2014 || y == 2021) ? `<span class="cv">${n >= 1000 ? (n/1000).toFixed(1)+"k" : n}</span>` : "");
+    wire(col, `<b>${y}</b><br>${fmt(n)} bins set up<br>${pct(n/TOTAL)} of today's program`);
+    host.appendChild(col);
+    ax.insertAdjacentHTML("beforeend", `<span>'${String(y).slice(2)}</span>`);
+  });
+})();
+
+// Chart 3: share of bins with 2+ open orders
+(function () {
+  const host = document.getElementById("open");
+  const max = 0.25, ticks = [0,0.05,0.10,0.15,0.20,0.25];
+  const rows = SITES.filter(s => s[1] >= 300).map(s => [...s, s[5]/s[1]]).sort((a,b) => b[7]-a[7]);
+  rows.forEach(([name,bins,,,o1,o2,kind,share]) => {
+    const row = document.createElement("div");
+    row.className = "hrow " + (share > 0.02 ? "scan" : ""); row.setAttribute("role","listitem");
+    row.setAttribute("aria-label", `${name}: ${pct(share)} of bins with two or more open orders`);
+    row.innerHTML = `<span class="lbl">${name.replace(/^HONA /, '<span class="pre">HONA </span>')}</span><div class="track"><div class="bar" style="width:${share/max*100}%"></div><div class="refline" style="left:${0.02/max*100}%"></div></div><span class="val">${pct(share)}</span>`;
+    grid(row.querySelector(".track"), max, ticks);
+    wire(row, `<b>${name}</b><br>${fmt(o2)} of ${fmt(bins)} bins with 2+ open orders<br>${fmt(o1)} bins with at least one open order<br>Implied fill rate if confirmed: ${pct(1-share)}`);
+    host.appendChild(row);
+  });
+  axis("open-axis", max, ticks, t => Math.round(t*100) + "%");
+})();
+</script>
+</body>
+</html>
